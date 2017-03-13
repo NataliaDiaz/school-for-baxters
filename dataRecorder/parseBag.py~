@@ -1,0 +1,51 @@
+#!/usr/bin/python
+#coding: utf-8
+from __future__ import division
+import numpy as np
+import rosbag
+
+import matplotlib.pyplot as plt
+from cv_bridge import CvBridge, CvBridgeError
+
+import scipy.misc
+
+
+bridge = CvBridge()
+bag = rosbag.Bag('bag/record.bag')
+#bag = rosbag.Bag('here/pose2_head_pan.bag')
+
+print bag
+
+txt_file = ''
+
+lastTopic = None
+totImg = 0
+
+directory = 'pose01_head_pan/'
+
+for topic, msg, t in bag.read_messages():
+
+    if lastTopic == topic:
+        continue
+
+    if topic=='test/cameras/head_camera_2/image':
+        img = bridge.imgmsg_to_cv2(msg,'rgb8')
+        scipy.misc.toimage(img, cmin=0, cmax=255).save('{}frame{}.jpg'.format(directory, str(totImg).zfill(4)))
+        totImg += 1
+
+    else:
+        if txt_file=='':
+            txt_file = '# time '+' '.join(msg.name)+'\n'
+
+        print "msg.position", msg.position
+        txt_file += str(t)[:-8]+' '+' '.join(map(str,msg.position))+'\n'
+
+    lastTopic = topic
+    
+
+                                                       
+f = open(directory+'robot_joint_states.txt','w')
+f.write(txt_file)
+f.close()
+
+bag.close()
