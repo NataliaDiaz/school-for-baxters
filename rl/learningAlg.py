@@ -6,7 +6,6 @@ import torch
 from numpy import random
 
 from torch import nn
-from torch import optim
 import torch.nn.functional as F
 from torch.utils.serialization import load_lua
 
@@ -142,7 +141,7 @@ class DQN(nn.Module):
 
         if sample > self.eps_threshold:
             Qs = self.forward(Variable(state, volatile=True)).data
-            if self.stepsDone%20==0:
+            if self.stepsDone%50==0:
                 print "eps",self.eps_threshold 
                 print "step",state[0,0]
                 print "score", Qs

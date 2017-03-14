@@ -11,18 +11,23 @@ DISPLAY = False
 
 LEARNING_RATE = 1e-2
 
-EPS_START = 0.9
-EPS_END = 0.10
-
-EPS_DECAY = 200
 GAMMA = 0.85
 
-NUM_EP = 100
+NUM_EP = 20
 BATCH_SIZE = 128
-PRINT_INFO = 5
+PRINT_INFO = 50
 
-SIZE_MEMORY = 10000
+NUM_INPUT = 1
+NUM_ACTION = 2
+NUM_OBS = 1
+N = 20 #number of hidden neuron
+
+SIZE_MEMORY = 1000
+
 EXPLO = 'eps-greedy'
+EPS_START = 0.9
+EPS_END = 0.10
+EPS_DECAY = 200
 
 MAIN_PATH = HOME+'Documents/enstage/'
 
@@ -31,9 +36,10 @@ MODEL_PATH = RL_PATH+'model/'
 LOG_RL = RL_PATH+'Log/'
 TIM_PATH = MAIN_PATH+'Baxter_Learning/Log/'
 
-CV_EXPE = True
-#False : Do only one Rl for testing
-#True : Do multiple experiences to get stat
+NUM_EXPE = 20
+#1 : Do only one Rl for testing, the model is saved
+#>1 : Do multiple experiences to get stats and plots, only last model is saved
+
 
 RESET_TIME = 1 #Estimation of the time to reset robot
 ACTION_TIME = 0.25 #Estimation of the time to execute one action

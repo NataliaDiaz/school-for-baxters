@@ -21,7 +21,17 @@ class BaxterProblem(Exception): pass
 
 class trueNet(object):
     def __init__(self):
-        self.head = Head()
+        ready = False
+        while not ready:
+            try:
+                self.head = Head()
+            except OSError:
+                print "Waiting for Baxter to be ready, come"
+                time.sleep(1)
+                continue
+            else:
+                ready=True
+
     def forward(self,*args):
         return torch.Tensor(np.array([self.head.pan()])).unsqueeze(0)
     def cuda(self):
@@ -84,7 +94,7 @@ class LearnEnv(object):
         elif action==1:
             self.head.set_pan(currentPan-0.1)
         else:
-            assert False, "wtf dude"
+            raise BaxterProblem("I can't do that.")
 
         time.sleep(const.ACTION_TIME)
         # print "currentPan, After :",self.head.pan()
@@ -103,7 +113,7 @@ class LearnEnv(object):
             done = True
             
         else:
-            reward = -1
+            reward = 0
             done = False
 
         return reward, done
@@ -113,10 +123,9 @@ class LearnEnv(object):
 
         logScores = []
         meanScores = []
-        maxScores = []
-        step = 0
+        countEp = 0
 
-        while ~rospy.is_shutdown() and step<const.NUM_EP:
+        while ~rospy.is_shutdown() and countEp<const.NUM_EP:
             self.reset()
             totalReward = 0
 
@@ -131,28 +140,24 @@ class LearnEnv(object):
                 self.rl.optimize(self.optimizer)
 
                 if done:
-                    step += 1
-                    logScores.append(totalReward)
+                    countEp += 1
+                    logScores.append(totalReward-t)
                     print "Over, score : ", logScores[-1]
                     break
 
             self.rl.saveModel()
-            
-            if step%const.PRINT_INFO==0:
-                logTemp = logScores[step-const.PRINT_INFO:step]
-                print "step",step
+
+            if countEp>=const.PRINT_INFO:
+                logTemp = logScores[countEp-const.PRINT_INFO:countEp]
+
+            if countEp%const.PRINT_INFO==0:
+                print "countEp",countEp
                 print "logScores",logTemp
-                print "loss",self.rl.currentLoss[0]
+                #print "loss",self.rl.currentLoss[0]
 
-                y = np.mean(logTemp)
-                meanScores.append(y)
-                maxScore = np.max(logTemp)
-                maxScores.append(maxScore)
+                #print "Mean Scores", meanScores
 
-                print "Mean Scores", meanScores
-                print "Max Scores", maxScores
-
-        return meanScores,maxScores        
+        return logScores
 
     
 
