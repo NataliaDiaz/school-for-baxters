@@ -4,17 +4,15 @@ from os.path import expanduser
 HOME = expanduser("~")+'/'
 
 """Module to deal with constant, much more easier and every sub module can access it"""
-
-
 USE_CUDA = True
 DISPLAY = False
 
-LEARNING_RATE = 1e-2
+LEARNING_RATE = 0.001
 
 GAMMA = 0.85
 
-NUM_EP = 20
-BATCH_SIZE = 128
+NUM_EP = 12
+BATCH_SIZE = 40
 PRINT_INFO = 50
 
 NUM_INPUT = 1
@@ -24,10 +22,10 @@ N = 20 #number of hidden neuron
 
 SIZE_MEMORY = 1000
 
-EXPLO = 'eps-greedy'
+EXPLO = 'boltzman'
 EPS_START = 0.9
 EPS_END = 0.10
-EPS_DECAY = 200
+EPS_DECAY = 300
 
 MAIN_PATH = HOME+'Documents/enstage/'
 

@@ -106,10 +106,10 @@ class LearnEnv(object):
             raise BaxterProblem("Head Desynchronize, you might want to wait a little more between action and reset.\nIf you pressed Ctrl-c, this is normal.")
 
         if self.head.pan() >= MAX_PAN:
-            reward = 100
+            reward = 20
             done = True
         elif self.head.pan() <= -MAX_PAN:
-            reward = -100
+            reward = -20
             done = True
             
         else:
@@ -131,12 +131,12 @@ class LearnEnv(object):
 
             for t in count():
                 self.rl.pan = self.head.pan()
-                action = self.rl.getAction(self.currentImage)
+                action, estimation = self.rl.getAction(self.currentImage)
                 reward, done = self.step(action[0,0])
                 totalReward += reward
-
+ 
                 reward = torch.Tensor([reward])
-                self.rl.save(action, self.currentImage, reward)
+                self.rl.save(action, self.currentImage, reward, estimation)
                 self.rl.optimize(self.optimizer)
 
                 if done:

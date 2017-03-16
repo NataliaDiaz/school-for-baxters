@@ -6,7 +6,7 @@ import const # all constants needed are there, the format to use constanst is : 
 #EX : const.USE_CUDA
 
 from interfaceBax.env import LearnEnv, trueNet
-from rl.learningAlg import DQN 
+from rl.learningAlg import DQN, DQN_prioritized 
 from Baxter_Learning.loadingLuaModel import loadModel
 from plot import plotMeanScores, plotOneExp
 
@@ -20,10 +20,13 @@ import random
 from torch import optim
 
 def doExpe(timNet, reset=True):
-    rl = DQN(const.NUM_INPUT,const.NUM_ACTION,const.N,
-             timNet,exploration=const.EXPLO)
+    # rl = DQN(const.NUM_INPUT,const.NUM_ACTION,const.N,
+    #          timNet,exploration=const.EXPLO)
+    # modelString = "{}Dqn{}.state".format(const.MODEL_PATH,const.N)
 
-    modelString = "{}Dqn{}.state".format(const.MODEL_PATH,const.N)
+    rl = DQN_prioritized(const.NUM_INPUT,const.NUM_ACTION,
+        const.N,timNet,exploration=const.EXPLO)
+    modelString = "{}Dqn_prioritized{}.state".format(const.MODEL_PATH,const.N)
     
     if isfile(modelString):
         print "Model exists : LOADING MODEL"
@@ -50,11 +53,12 @@ def doExpe(timNet, reset=True):
     return logScores
 
 
+
 rospy.init_node('Learning')
 
-#timNet = loadModel("reprLearner1d.t7")
+timNet = loadModel("reprLearner1d.t7")
 # timNet = loadModel('HeadSupervised.t7')
-timNet = trueNet() #True position of the head, for testing
+#timNet = trueNet() #True position of the head, for testing
 
 if const.NUM_EXPE>1:
     numMeasure = const.NUM_EP
