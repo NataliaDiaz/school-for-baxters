@@ -104,6 +104,10 @@ class RlContainer(object):
         state = self.timNet.forward(img)
         self.currentState = state
 
+        if const.DISPLAY:
+            print "state",state[0,0]
+
+
         if self.exploration=='boltzman':
             return self.boltzman(state)
         else:
@@ -126,8 +130,6 @@ class RlContainer(object):
         
         sample = random.random()
         self.eps_threshold = const.EPS_END + (const.EPS_START - const.EPS_END) * np.exp(-1. * self.stepsDone / const.EPS_DECAY)
-        if const.DISPLAY:
-            print "state",state[0,0]
             
         Qs = self.rlObj.forward(Variable(state.type(dtype), volatile=True)).data
         if sample > self.eps_threshold:

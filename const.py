@@ -1,14 +1,26 @@
 #!/usr/bin/python
 #coding: utf-8
+"""
+Module to deal with constant, much more easier and every sub module can access it
+Easy to change model, parameters, learning_rate, cuda, experiments etc ...
+
+Also path for loading, saving etc ...
+"""
 from os.path import expanduser
+
+class DrunkProgrammer(Exception):pass
+
 HOME = expanduser("~")+'/'
 
-"""Module to deal with constant, much more easier and every sub module can access it"""
+MODEL = 'auto'
+MEMORY = 'prioritized'
+
+LOADING = False
+
 USE_CUDA = True
-DISPLAY = False
+DISPLAY = True
 
 LEARNING_RATE = 0.01
-
 GAMMA = 0.85
 
 NUM_EP = 12

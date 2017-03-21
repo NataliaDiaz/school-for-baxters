@@ -91,7 +91,7 @@ class LearnEnv(object):
         MAX_PAN = 1.2
         currentPan = self.head.pan()
 
-        # action = 0
+        action = 0
         # print "============================" 
         # print "currentPan, Before :",currentPan 
         # print "action",action

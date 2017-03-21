@@ -20,20 +20,32 @@ import random
 from torch import optim
 
 def doExpe(timNet, reset=True):
-    # rl = DQN(const.NUM_INPUT,const.NUM_ACTION,const.N)
-    # modelString = "{}Dqn{}.state".format(const.MODEL_PATH,const.N)
 
-    rl = DQN_prioritized(const.NUM_INPUT,const.NUM_ACTION,const.N)
-    modelString = "{}Dqn_prioritized{}.state".format(const.MODEL_PATH,const.N)
 
-    # rl = DQN_endToEnd(const.NUM_INPUT,const.NUM_ACTION, const.N)
-    # modelString = "{}Dqn_endToEnd.state".format(const.MODEL_PATH,const.N)
+    #=============== CREATING MODEL HERE ================
+    #====================================================
+    if const.MODEL in ['auto','repr','true','superv']:
 
-    if isfile(modelString):
+        if const.MEMORY == 'uniform':
+            rl = DQN(const.NUM_INPUT,const.NUM_ACTION,const.N)
+            modelString = "{}Dqn{}.state".format(const.MODEL_PATH,const.N)
+        elif const.MEMORY == 'prioritized':
+            rl = DQN_prioritized(const.NUM_INPUT,const.NUM_ACTION,const.N)
+            modelString = "{}Dqn_prioritized{}.state".format(const.MODEL_PATH,const.N)
+        else:
+            raise const.DrunkProgrammer("Wrong memory : {} doesn't exist".format(const.MEMORY))
+                                        
+    elif const.MODEL == 'end':
+        rl = DQN_endToEnd(const.NUM_INPUT,const.NUM_ACTION, const.N)
+        modelString = "{}Dqn_endToEnd.state".format(const.MODEL_PATH,const.N)
+    else:
+        raise const.DrunkProgrammer("Wrong model : {} doesn't exist".format(const.MODEL))
+        
+    if isfile(modelString) and const.LOADING:
         print "Model exists : LOADING MODEL"
         rl.load_state_dict(torch.load(modelString))
     else:
-        print "Model doesn't exist : LEARNING FROM SCRATCH"
+        print "Model doesn't exist (or const.LOADING is False) : LEARNING FROM SCRATCH "
 
     optimizer = optim.RMSprop(rl.parameters(),lr=const.LEARNING_RATE)
 
@@ -62,13 +74,20 @@ def doExpe(timNet, reset=True):
 
 rospy.init_node('Learning')
 
-#timNet = loadModel("auto1d.t7")
-timNet = loadModel("reprLearner1d.t7")
-# timNet = loadModel('HeadSupervised.t7')
-# timNet = TrueNet() #True position of the head, for testing
+if const.MODEL == 'auto':
+    timNet = loadModel("auto1d.t7")
+elif const.MODEL == 'repr':
+    timNet = loadModel("reprLearner1d.t7")
+elif const.MODEL == 'superv':
+    timNet = loadModel('HeadSupervised.t7')
+elif const.MODEL == 'true':
+    timNet = TrueNet() #True position of the head, for testing
+elif const.MODEL == 'end':
+    timNet = DummyTimNet()
+else:
+    raise const.DrunkProgrammer("Wrong model : {} doesn't exist".format(const.MODEL))
 
-#timNet = DummyTimNet()
-
+    
 if const.NUM_EXPE>1:
     numMeasure = const.NUM_EP
     reset=True
@@ -80,9 +99,9 @@ if const.NUM_EXPE>1:
         print "Experience n°{}, begin".format(i+1)
         try:
             logMean[i,:] = doExpe(timNet,reset=reset)
-        except RuntimeError:
-            print i+" experience"
-            raise RuntimeError("Cuda failed")
+        except RuntimeError as e: 
+            print str(i)+" experience"
+            raise e
         
         print "Experience n°{}, over".format(i+1)
         print "Scores", logMean[i,:] 
