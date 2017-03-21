@@ -19,8 +19,17 @@ import const # const.USE_CUDA for exemple
 
 class BaxterProblem(Exception): pass
 
-class trueNet(object):
+class DummyTimNet(object):
     def __init__(self):
+        pass
+    def forward(self,x):
+        return x
+    def cuda(self):
+        pass
+
+class TrueNet(DummyTimNet):
+    def __init__(self):
+        super(TrueNet,self).__init__()
         ready = False
         while not ready:
             try:
@@ -34,8 +43,6 @@ class trueNet(object):
 
     def forward(self,*args):
         return torch.Tensor(np.array([self.head.pan()])).unsqueeze(0)
-    def cuda(self):
-        pass
 
 class LearnEnv(object):
     def __init__(self, rl, optimizer):

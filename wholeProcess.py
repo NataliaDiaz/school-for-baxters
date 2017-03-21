@@ -5,9 +5,9 @@ from __future__ import division
 import const # all constants needed are there, the format to use constanst is : const.CONSTANT_NAME
 #EX : const.USE_CUDA
 
-from interfaceBax.env import LearnEnv, trueNet
-from rl.learningAlg import DQN, DQN_prioritized 
-from Baxter_Learning.loadingLuaModel import loadModel
+from interfaceBax.env import LearnEnv, TrueNet, DummyTimNet
+from rl.learningAlg import DQN, DQN_prioritized, DQN_endToEnd, RlContainer
+from Baxter_Learning.loadingLuaModel import loadModel,LuaModel
 from plot import plotMeanScores, plotOneExp
 
 from os.path import isfile
@@ -20,14 +20,15 @@ import random
 from torch import optim
 
 def doExpe(timNet, reset=True):
-    # rl = DQN(const.NUM_INPUT,const.NUM_ACTION,const.N,
-    #          timNet,exploration=const.EXPLO)
+    # rl = DQN(const.NUM_INPUT,const.NUM_ACTION,const.N)
     # modelString = "{}Dqn{}.state".format(const.MODEL_PATH,const.N)
 
-    rl = DQN_prioritized(const.NUM_INPUT,const.NUM_ACTION,
-        const.N,timNet,exploration=const.EXPLO)
+    rl = DQN_prioritized(const.NUM_INPUT,const.NUM_ACTION,const.N)
     modelString = "{}Dqn_prioritized{}.state".format(const.MODEL_PATH,const.N)
-    
+
+    # rl = DQN_endToEnd(const.NUM_INPUT,const.NUM_ACTION, const.N)
+    # modelString = "{}Dqn_endToEnd.state".format(const.MODEL_PATH,const.N)
+
     if isfile(modelString):
         print "Model exists : LOADING MODEL"
         rl.load_state_dict(torch.load(modelString))
@@ -40,8 +41,10 @@ def doExpe(timNet, reset=True):
         timNet.cuda()
         rl.cuda()
 
+    rlObj = RlContainer(rl,timNet,const.EXPLO)
+        
     #Creating env
-    env = LearnEnv(rl, optimizer)
+    env = LearnEnv(rlObj, optimizer)
     print("Running. Ctrl-c to quit")
 
     print "Begin Learning"
@@ -52,13 +55,19 @@ def doExpe(timNet, reset=True):
 
     return logScores
 
+#======================================
+#======================================
 
+# np.random.seed(42)
 
 rospy.init_node('Learning')
 
+#timNet = loadModel("auto1d.t7")
 timNet = loadModel("reprLearner1d.t7")
 # timNet = loadModel('HeadSupervised.t7')
-#timNet = trueNet() #True position of the head, for testing
+# timNet = TrueNet() #True position of the head, for testing
+
+#timNet = DummyTimNet()
 
 if const.NUM_EXPE>1:
     numMeasure = const.NUM_EP
@@ -69,7 +78,12 @@ if const.NUM_EXPE>1:
         if i==const.NUM_EXPE-1:
             reset=False
         print "Experience n°{}, begin".format(i+1)
-        logMean[i,:] = doExpe(timNet,reset=reset)
+        try:
+            logMean[i,:] = doExpe(timNet,reset=reset)
+        except RuntimeError:
+            print i+" experience"
+            raise RuntimeError("Cuda failed")
+        
         print "Experience n°{}, over".format(i+1)
         print "Scores", logMean[i,:] 
         print "================================="
