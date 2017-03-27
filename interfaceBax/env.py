@@ -170,8 +170,10 @@ class LearnEnv(object):
                     countEp += 1
                     logScores.append(totalReward*3-t)
                     print "Over, score : ", logScores[-1]
-                    print "logState 5 last state",self.rl.logState[-5:]
-                    print "logAction 5 last state",self.rl.logAction[-5:]
+
+                    if type(self.rl.logState[-1]) is float:
+                        print "logState 5 last state",self.rl.logState[-5:]
+                    print "logAction 5 last action",self.rl.logAction[-5:]
                     self.rl.logState = []
                     break
 

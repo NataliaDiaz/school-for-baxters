@@ -296,10 +296,11 @@ class DQN(nn.Module):
         
         optimizer.zero_grad()
         loss.backward()
+
         for param in self.parameters():
             param.grad.data.clamp_(-1, 1)
-
         optimizer.step()
+        
 
     def updateMemoryValue(self, stateValue,expectedValue):
         pass
@@ -326,6 +327,7 @@ class DQN_endToEnd(DQN_prioritized):
     def __init__(self, numInput, numOutput, N,memory='prioritized'):
         super(DQN_prioritized,self).__init__(numInput, numOutput, N,memory='prioritized')
         self.name='Dqn_endToEnd.state'
+        self.fc3 = None
 
         numFilter = 32
         self.conv1 = nn.Conv2d(3, numFilter, 3)
@@ -346,6 +348,7 @@ class DQN_endToEnd(DQN_prioritized):
         self.fc1 = nn.Linear(100,500)
         self.fc2 = nn.Linear(500,numOutput)
 
+
         #Xavier init
         self.apply(self.weights_init)
 
@@ -360,6 +363,8 @@ class DQN_endToEnd(DQN_prioritized):
         x = F.max_pool2d(F.relu(self.norm4(self.conv4(x))), (2,2))
         x = F.relu(self.norm5(self.conv5(x))).view(batchSize,100)
         x = self.fc2(F.relu(self.fc1(x)))
+
+        batchSize = None
         return x
 
     def weights_init(self,m):

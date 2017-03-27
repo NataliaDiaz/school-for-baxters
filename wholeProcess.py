@@ -8,7 +8,7 @@ import const # all constants needed are there, the format to use constanst is : 
 from interfaceBax.env import LearnEnv, TrueNet, DummyTimNet
 from rl.learningAlg import DQN, DQN_prioritized, DQN_endToEnd, RlContainer
 from Baxter_Learning.loadingLuaModel import loadModel,LuaModel
-from plot import plotMeanScores, plotOneExp
+from plot import plotMeanScores, plotOneExp, saveTempLog, loadTempLog
 
 from os.path import isfile
 import subprocess
@@ -20,7 +20,6 @@ import random
 from torch import optim
 
 def doExpe(timNet, reset=True):
-
 
     #=============== CREATING MODEL HERE ================
     #====================================================
@@ -53,7 +52,7 @@ def doExpe(timNet, reset=True):
         rl.cuda()
 
     rlObj = RlContainer(rl,timNet,const.EXPLO)
-        
+    
     #Creating env
     env = LearnEnv(rlObj, optimizer)
     print("Running. Ctrl-c to quit")
@@ -92,20 +91,26 @@ else:
 
     
 if const.NUM_EXPE>1:
-    numMeasure = const.NUM_EP
     reset=True
-    logMean = np.empty((const.NUM_EXPE,numMeasure))
+    logMean, expeDone = loadTempLog()
     
-    for i in range(const.NUM_EXPE):
+    for i in range(expeDone, const.NUM_EXPE):
         if i==const.NUM_EXPE-1:
             reset=False
         print "Experience n°{}, begin".format(i+1)
-        logMean[i,:] = doExpe(timNet,reset=reset)
+        try:
+            logMean[i,:] = doExpe(timNet,reset=reset)
+        except:
+            saveTempLog(logMean)
+            raise
+            
         
         print "Experience n°{}, over".format(i+1)
         print "Scores", logMean[i,:] 
         print "================================="
-        print "=================================" 
+        print "================================="
+        saveTempLog(logMean)
+        
     plotMeanScores(logMean)
 
 else:

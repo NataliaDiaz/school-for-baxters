@@ -29,16 +29,17 @@ LOADING = False
 USE_CUDA = True
 # To GPU or not GPU
 
-DISPLAY = False
-NO_BRAIN = False # baxter does only do 'turn_left'
-REWARD = False
+DISPLAY = False #display image and representation associated at every timestep
+NO_BRAIN = False # baxter does only 'turn_left'
 
-LEARNING_RATE = 0.005
+REWARD = False #show rewardbatch at every timestep
+
+LEARNING_RATE = 0.001
 GAMMA = 0.85
-POWER = 0.3
+POWER = 0.3 #For prioritized memory, higher value => higher probability to replay 'surprising' reward. 0 => uniform random
 
 NUM_EP = 75
-BATCH_SIZE = 60
+BATCH_SIZE = 30 
 PRINT_INFO = 50
 
 NUM_INPUT = 1
@@ -49,6 +50,8 @@ N = 20 #number of hidden neuron
 SIZE_MEMORY = 10000
 
 EXPLO = 'boltzman' #explo can be 'boltzman' or 'eps'
+
+#For epsilon greed
 EPS_START = 0.9
 EPS_END = 0.10
 EPS_DECAY = 300
