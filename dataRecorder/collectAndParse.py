@@ -21,14 +21,14 @@ def moveHead(head,direction):
     elif direction==-1 and head.pan()<-1.3:
         direction = 1
 
-    panning = 0.10*direction + (random.random()/8-0.5/8)
+    panning = 0.07*direction #+ (random.random()/4-0.5/4)
     head.set_pan(head.pan()+panning)
     time.sleep(0.5)
     return direction
-
-directory = 'moreData/pose11_head_pan/'
+    
+directory = 'simpleData/pose05_head_pan/'
 bagPath = 'bag'
-numImages = 60
+numImages = 70
 #============= INIT ==================
 #=====================================
 bridge = CvBridge()

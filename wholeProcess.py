@@ -24,8 +24,7 @@ def doExpe(timNet, reset=True):
 
     #=============== CREATING MODEL HERE ================
     #====================================================
-    if const.MODEL in ['auto','repr','true','superv']:
-
+    if const.MODEL in ['auto1','auto2','repr','true','superv']:
         if const.MEMORY == 'uniform':
             rl = DQN(const.NUM_INPUT,const.NUM_ACTION,const.N)
             modelString = "{}Dqn{}.state".format(const.MODEL_PATH,const.N)
@@ -74,8 +73,12 @@ def doExpe(timNet, reset=True):
 
 rospy.init_node('Learning')
 
-if const.MODEL == 'auto':
+print "Whole Process : Model = ",const.MODEL 
+
+if const.MODEL == 'auto1':
     timNet = loadModel("auto1d.t7")
+elif const.MODEL == 'auto2':
+    timNet = loadModel("auto1dAugm.t7")
 elif const.MODEL == 'repr':
     timNet = loadModel("reprLearner1d.t7")
 elif const.MODEL == 'superv':
@@ -97,11 +100,7 @@ if const.NUM_EXPE>1:
         if i==const.NUM_EXPE-1:
             reset=False
         print "Experience n°{}, begin".format(i+1)
-        try:
-            logMean[i,:] = doExpe(timNet,reset=reset)
-        except RuntimeError as e: 
-            print str(i)+" experience"
-            raise e
+        logMean[i,:] = doExpe(timNet,reset=reset)
         
         print "Experience n°{}, over".format(i+1)
         print "Scores", logMean[i,:] 

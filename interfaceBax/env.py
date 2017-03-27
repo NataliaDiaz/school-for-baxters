@@ -81,17 +81,21 @@ class LearnEnv(object):
         self.optimizer = optimizer
 
     def reset(self):
-        self.head.set_pan(0)
+
+        if const.TASK == 1:
+            self.head.set_pan(1.28)
+        else:
+            self.head.set_pan(0.75*np.random.choice([-1,1]))
         time.sleep(const.RESET_TIME)
 
     def imageFromCamera(self,data):
         self.currentImage = self.bridge.imgmsg_to_cv2(data, "rgb8")
     def step(self, action):
 
-        MAX_PAN = 1.2
         currentPan = self.head.pan()
 
-        action = 0
+        if const.NO_BRAIN:
+            action = 1
         # print "============================" 
         # print "currentPan, Before :",currentPan 
         # print "action",action
@@ -112,19 +116,35 @@ class LearnEnv(object):
         if np.abs(self.head.pan()-currentPan) < 0.08 :
             raise BaxterProblem("Head Desynchronize, you might want to wait a little more between action and reset.\nIf you pressed Ctrl-c, this is normal.")
 
-        if self.head.pan() >= MAX_PAN:
-            reward = 20
-            done = True
-        elif self.head.pan() <= -MAX_PAN:
-            reward = -20
-            done = True
-            
-        else:
-            reward = 0
-            done = False
+        currentPan = self.head.pan()
 
-        return reward, done
-        
+        if const.TASK==1: #first task => look at your left, don't look at the right, there is a monster
+            if currentPan >= const.MAX_PAN:
+                reward = 20
+                done = True
+            elif currentPan <= -const.MAX_PAN:
+                reward = -20
+                done = True
+            else:
+                reward = 0
+                done = False
+            return reward, done
+
+        elif const.TASK==2: #second task => don't look at your left or right, look in front of you
+            if currentPan >= const.MAX_PAN or currentPan <= -const.MAX_PAN:
+                reward = -20
+                done = True
+            elif currentPan <= const.MIDDLE_PAN and currentPan >= -const.MIDDLE_PAN:
+                reward = 20
+                done = True
+            else:
+                reward = 0
+                done = False
+            return reward, done
+
+        else:
+            raise const.DrunkProgrammer("Task cannot be {}".format(const.TASK))
+                
         
     def run(self):
 
@@ -146,10 +166,13 @@ class LearnEnv(object):
                 self.rl.save(action, self.currentImage, reward, estimation)
                 self.rl.optimize(self.optimizer)
 
-                if done:
+                if done or t>199:
                     countEp += 1
-                    logScores.append(totalReward-t)
+                    logScores.append(totalReward*3-t)
                     print "Over, score : ", logScores[-1]
+                    print "logState 5 last state",self.rl.logState[-5:]
+                    print "logAction 5 last state",self.rl.logAction[-5:]
+                    self.rl.logState = []
                     break
 
             self.rl.saveModel()

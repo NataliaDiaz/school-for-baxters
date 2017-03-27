@@ -88,7 +88,10 @@ class RlContainer(object):
         self.mean, self.std = self.getMeanStdImages()
         self.exploration=exploration
         self.currentState = None #Need to remember state to save
+        self.logState = []
+        self.logAction = []
 
+        
     def save(self, action, nextState, reward, estimation=None):
         #next state is an image, need the state corresponding
         nextState = self.timNet.forward(self.reformat(nextState))
@@ -104,15 +107,26 @@ class RlContainer(object):
         state = self.timNet.forward(img)
         self.currentState = state
 
+
         if const.DISPLAY:
             print "state",state[0,0]
 
-
         if self.exploration=='boltzman':
-            return self.boltzman(state)
+            action,delta =  self.boltzman(state)
+        elif self.exploration=='eps':
+            action,delta =  self.epsGreedy(state)
         else:
-            return self.epsGreedy(state)
+            raise const.DrunkProgrammer("Cannot use {} exploration",format(self.exploration))
 
+        if state.dim() == 2:
+            assert state[0,0] == self.currentState[0,0]
+        else:
+            assert state[0,0,0,0] == self.currentState[0,0,0,0]
+
+        self.logState.append(np.trunc(state[0,0]*100))
+        self.logAction.append(action[0,0])
+        
+        return action,delta
     def boltzman(self,state):
 
         self.eps_threshold = 0
@@ -121,7 +135,7 @@ class RlContainer(object):
         Qs = F.softmax(res)
 
         act = np.random.choice(Qs.size(1), p=Qs[0,:].data.cpu().numpy())
-        if self.stepsDone%50==0:
+        if self.stepsDone%const.PRINT_INFO==0:
             print "state",state,Qs,act,res.data 
 
         return torch.LongTensor([[act]]), res.data[0,act]
@@ -133,7 +147,7 @@ class RlContainer(object):
             
         Qs = self.rlObj.forward(Variable(state.type(dtype), volatile=True)).data
         if sample > self.eps_threshold:
-            if self.stepsDone%100==0:
+            if self.stepsDone%const.PRINT_INFO==0:
                 print "eps",self.eps_threshold 
                 print "state",state[0,0]
                 print "score", Qs
@@ -141,7 +155,7 @@ class RlContainer(object):
             action = Qs.max(1)[1].cpu()
             return action, Qs[0,action[0,0]]
         else:
-            action = random.randint(0,self.numOutput)
+            action = random.randint(0,self.rlObj.numOutput)
             return torch.LongTensor([[action]]), Qs[0,action]
             #Need to be the same shape as model.forward output, that's why there are [[]]
 
@@ -226,17 +240,18 @@ class DQN(nn.Module):
         #NETWORK PARAMS
         #===============
         self.fc1 = nn.Linear(self.numInput,self.N)
+        self.fc2 = nn.Linear(self.N,self.N)
         self.activation = nn.ReLU() #Different activation unit, just trying
-        self.fc2 = nn.Linear(self.N,self.numOutput)
+        self.fc3 = nn.Linear(self.N,self.numOutput)
         #self.normIn = nn.BatchNorm1d(numInput)
 
-        self.name='Dqn{}.state'.format(self.N)
+        self.name='Dqn{}{}.state'.format(self.N, const.MODEL)
 
     def forward(self,x):
         x = self.activation(self.fc1(x))
-        x = self.fc2(x)
+        x = self.activation(self.fc2(x))
+        x = self.fc3(x)
         return x
-
 
     def optimize(self, optimizer):
         if len(self.memory)<const.BATCH_SIZE:
@@ -261,7 +276,8 @@ class DQN(nn.Module):
         Q_s_t = self.forward(stateBatch)
         stateActionValue = Q_s_t.gather(1, actionBatch).cpu()
 
-        #print "rewardBatch",rewardBatch 
+        if const.REWARD:
+            print "rewardBatch",rewardBatch 
         
         nextStateValue = Variable(torch.zeros(const.BATCH_SIZE))
         nextStateValue[nonFinalMask] = self.forward(nonFinalNextStates).max(1)[0].cpu()
@@ -295,10 +311,10 @@ class DQN(nn.Module):
 class DQN_prioritized(DQN):
     def __init__(self, numInput, numOutput, N, memory='prioritized'):
         super(DQN_prioritized,self).__init__(numInput, numOutput, N,memory='prioritized')
-        self.name='Dqn_prioritized{}.state'.format(self.N)
+        self.name='Dqn_prioritized{}{}.state'.format(self.N, const.MODEL)
 
-    def updateMemoryValue(self, stateValue,expectedValue, power=0.7):
-        delta = torch.abs(stateValue.data - expectedValue.data).pow(power)+self.memory.eps
+    def updateMemoryValue(self, stateValue,expectedValue):
+        delta = torch.abs(stateValue.data - expectedValue.data).pow(const.POWER)+self.memory.eps
 
         assert delta.size(0)==const.BATCH_SIZE, "Batch size must be unchanged\nDelta : {}\nBatch :{}".format(delta.size(0), const.BATCH_SIZE)
         
@@ -334,6 +350,7 @@ class DQN_endToEnd(DQN_prioritized):
         self.apply(self.weights_init)
 
     def forward(self,x):
+
         batchSize = x.size(0)
         assert x.size(1)!=1, "TimNet shouldn't give representation, this is end to end q-learning"
         
