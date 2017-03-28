@@ -20,19 +20,20 @@ Numpy and Matplotlib
 Basically to setup this repo :
 (You need your 'catkin_ws' to be in your home ~)
 
-'''
+```
 git clone https://github.com/Mathieu-Seurin/enstage.git
 cd enstage
 git clone https://github.com/TLESORT/Baxter_Learning.git
 ./process.sh
-'''
+```
+
 Then gazebo should open (you have to wait a little bit)
 
 Then, in a new terminal (don't try to interrupt the other one)
 
-'''
+```
 python wholeProcess.py
-'''
+```
 
 WARNING : 
 --------
