@@ -169,7 +169,7 @@ class LearnEnv(object):
                 if done or t>199:
                     countEp += 1
                     logScores.append(totalReward*3-t)
-                    print "Over, score : ", logScores[-1]
+                    print "Trial {} Over, score : {}".format(countEp, logScores[-1])
 
                     if type(self.rl.logState[-1]) is float:
                         print "logState 5 last state",self.rl.logState[-5:]

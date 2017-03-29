@@ -32,7 +32,7 @@ def doExpe(timNet, reset=True):
             modelString = "{}Dqn_prioritized{}.state".format(const.MODEL_PATH,const.N)
         else:
             raise const.DrunkProgrammer("Wrong memory : {} doesn't exist".format(const.MEMORY))
-                                        
+
     elif const.MODEL == 'end':
         rl = DQN_endToEnd(const.NUM_INPUT,const.NUM_ACTION, const.N)
         modelString = "{}Dqn_endToEnd.state".format(const.MODEL_PATH,const.N)
@@ -68,7 +68,7 @@ def doExpe(timNet, reset=True):
 #======================================
 #======================================
 
-# np.random.seed(42)
+np.random.seed(1337)
 
 rospy.init_node('Learning')
 
@@ -107,9 +107,9 @@ if const.NUM_EXPE>1:
         
         print "Experience n°{}, over".format(i+1)
         print "Scores", logMean[i,:] 
-        print "================================="
-        print "================================="
         saveTempLog(logMean)
+        print "================================="
+        print "================================="
         
     plotMeanScores(logMean)
 

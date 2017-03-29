@@ -249,7 +249,7 @@ class DQN(nn.Module):
 
     def forward(self,x):
         x = self.activation(self.fc1(x))
-        x = self.activation(self.fc2(x))
+        #x = self.activation(self.fc2(x))
         x = self.fc3(x)
         return x
 
@@ -298,7 +298,8 @@ class DQN(nn.Module):
         loss.backward()
 
         for param in self.parameters():
-            param.grad.data.clamp_(-1, 1)
+            if not (param.grad is None):
+                param.grad.data.clamp_(-1, 1)
         optimizer.step()
         
 

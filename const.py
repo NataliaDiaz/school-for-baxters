@@ -12,7 +12,7 @@ class DrunkProgrammer(Exception):pass
 
 HOME = expanduser("~")+'/'
 
-MODEL ='end'
+MODEL ='auto1'
 
 MEMORY = 'prioritized' #choice between 'uniform' and 'prioritized'
 
@@ -34,8 +34,8 @@ NO_BRAIN = False # baxter does only 'turn_left'
 
 REWARD = False #show rewardbatch at every timestep
 
-LEARNING_RATE = 0.001
-GAMMA = 0.85
+LEARNING_RATE = 0.01
+GAMMA = 0.95
 POWER = 0.3 #For prioritized memory, higher value => higher probability to replay 'surprising' reward. 0 => uniform random
 
 NUM_EP = 75
