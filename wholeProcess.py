@@ -85,7 +85,7 @@ elif const.MODEL == 'superv':
 elif const.MODEL == 'true':
     timNet = TrueNet() #True position of the head, for testing
 elif const.MODEL == 'end':
-    timNet = DummyTimNet()
+    timNet = DummyTimNet() # Does nothing
 else:
     raise const.DrunkProgrammer("Wrong model : {} doesn't exist".format(const.MODEL))
 

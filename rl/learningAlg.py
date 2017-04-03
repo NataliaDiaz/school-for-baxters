@@ -136,7 +136,7 @@ class RlContainer(object):
 
         act = np.random.choice(Qs.size(1), p=Qs[0,:].data.cpu().numpy())
         if self.stepsDone%const.PRINT_INFO==0:
-            print "state",state,Qs,act,res.data 
+            print "state",state,Qs,res.data
 
         return torch.LongTensor([[act]]), res.data[0,act]
 
@@ -203,6 +203,11 @@ class RlContainer(object):
         std /= 255
 
         return mean,std
+
+    def setMinMaxRbf(self,img1,img2):
+        img1 = self.reformat(img1)
+        img2 = self.reformat(img2)
+        self.timNet.setMinMaxRbf(img1,img2)
 
     def saveModel(self):
         self.rlObj.saveModel()
@@ -275,7 +280,6 @@ class DQN(nn.Module):
         # So those lines compute Q(s_t,a)
         Q_s_t = self.forward(stateBatch)
         stateActionValue = Q_s_t.gather(1, actionBatch).cpu()
-
         if const.REWARD:
             print "rewardBatch",rewardBatch 
         

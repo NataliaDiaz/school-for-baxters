@@ -12,9 +12,14 @@ class DrunkProgrammer(Exception):pass
 
 HOME = expanduser("~")+'/'
 
-MODEL ='auto1'
+MODEL ='repr'
 
 MEMORY = 'prioritized' #choice between 'uniform' and 'prioritized'
+
+NUM_RBF = 4
+RBF = False
+#rbf is just a way to represent the state,
+#instead of being a single value, it is values taken from a mixture of gaussian distribution
 
 TASK = 2 #First or second task
 #first task => look at your left, don't look at the right, there is a monster
@@ -30,19 +35,23 @@ USE_CUDA = True
 # To GPU or not GPU
 
 DISPLAY = False #display image and representation associated at every timestep
-NO_BRAIN = False # baxter does only 'turn_left'
+NO_BRAIN = False # baxter does only 'turn_left' 
 
 REWARD = False #show rewardbatch at every timestep
 
-LEARNING_RATE = 0.01
-GAMMA = 0.95
-POWER = 0.3 #For prioritized memory, higher value => higher probability to replay 'surprising' reward. 0 => uniform random
+LEARNING_RATE = 0.05
+GAMMA = 0.9
+POWER = 0.5 #For prioritized memory, higher value => higher probability to replay 'surprising' reward. 0 => uniform random
 
 NUM_EP = 75
 BATCH_SIZE = 30 
 PRINT_INFO = 50
 
-NUM_INPUT = 1
+if RBF:
+    NUM_INPUT = NUM_RBF
+else:
+    NUM_INPUT = 1
+
 NUM_ACTION = 2
 NUM_OBS = 1
 N = 20 #number of hidden neuron

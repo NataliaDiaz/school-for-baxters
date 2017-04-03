@@ -17,15 +17,35 @@ from itertools import count
 
 import const # const.USE_CUDA for exemple
 
+from scipy.stats import norm
+
 class BaxterProblem(Exception): pass
 
 class DummyTimNet(object):
     def __init__(self):
         pass
+
     def forward(self,x):
         return x
+
     def cuda(self):
         pass
+
+    def setMinMaxRbf(self, img1,img2):
+        assert const.DrunkProgrammer("Cannot use Dummy timnet and rbf")
+
+    def calcRBFvalue(self, x):
+        numRbf = const.NUM_RBF
+        means = np.linspace(self.minRepr,self.maxRepr,numRbf+2)
+        means = means[1:-1] #Getting rid of first and last elements, because you don't want gaussians on the extremum
+        std = np.sqrt(np.abs(means[0]-means[1])/2)
+        values = [norm.pdf(x,means[i],std) for i in range(numRbf)]
+
+        return torch.Tensor(np.array(values)).unsqueeze(0)
+
+        
+    def __call__(self,x):
+        return self.forward(x)
 
 class TrueNet(DummyTimNet):
     def __init__(self):
@@ -42,7 +62,22 @@ class TrueNet(DummyTimNet):
                 ready=True
 
     def forward(self,*args):
-        return torch.Tensor(np.array([self.head.pan()])).unsqueeze(0)
+        x = self.head.pan()
+        if const.RBF:
+            x = self.calcRBFvalue(x)
+            return x
+        
+        return torch.Tensor(np.array([x])).unsqueeze(0)
+
+    def setMinMaxRbf(self, img1,img2):
+        self.minRepr = -1.3
+        self.maxRepr = 1.3
+
+
+    def __call__(self,x):
+        return self.forward(x)
+
+
 
 class LearnEnv(object):
     def __init__(self, rl, optimizer):
@@ -70,16 +105,28 @@ class LearnEnv(object):
         # limb.move_to_joint_positions({'left_e0': -1.4})
         # limb.move_to_joint_positions({'left_e1': 1})
 
+        self.currentImage = None
+
         self.rl = rl
         self.head = Head()
 
         self.bridge = CvBridge()
         self.imageSub = rospy.Subscriber("cameras/head_camera_2/image",Image,self.imageFromCamera)
-        self.currentImage = None
 
         #Constants
         self.optimizer = optimizer
 
+        if const.RBF:
+            time.sleep(1)
+            self.head.set_pan(-1.3)
+            img1 = self.currentImage
+            self.head.set_pan(1.3)
+            img2 = self.currentImage
+            assert not(img1 is None and img2 is None), "Need to wait more before retrieving images"
+
+            self.rl.setMinMaxRbf(img1,img2)
+
+            
     def reset(self):
 
         if const.TASK == 1:

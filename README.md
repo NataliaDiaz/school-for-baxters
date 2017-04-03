@@ -3,19 +3,19 @@
 Welcome.
 
 At the moment, the project is not nearly to be completed, so it can change from time to time.
-This repo is linked to this one : https://github.com/TLESORT/Baxter_Learning/commits/master
+This repo is linked to this one : https://github.com/TLESORT/Baxter_Learning/
 
 You need :
 
-- Baxter arm simulator (ROS) : 
-- https://bitbucket.org/u2isir/arm_scenario_simulator
+1. Numpy and Matplotlib
 
-Pytorch :
+2. Baxter arm simulator (ROS) :
+  * https://bitbucket.org/u2isir/arm_scenario_simulator
 
-- http://pytorch.org/
-- http://pytorch.org/docs/
+3. Pytorch :
+  * http://pytorch.org/
+  * http://pytorch.org/docs/
 
-Numpy and Matplotlib
 
 Basically to setup this repo :
 (You need your 'catkin_ws' to be in your home ~)
