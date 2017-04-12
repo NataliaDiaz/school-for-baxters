@@ -30,7 +30,7 @@ class BaxterProblem(Exception): pass
 
 class LearnEnv1D(object):
     def __init__(self, rl, optimizer):
-        subprocess.call(["rosrun", "baxter_tools","enable_robot.py","-e"])
+        _ = subprocess.check_output(["rosrun", "baxter_tools","enable_robot.py","-e"])
 
         ready = False
         while not ready:
@@ -188,7 +188,7 @@ class LearnEnv1D(object):
 class LearnEnv3D(LearnEnv1D):
     def __init__(self, rlObj, optimizer):
         super(LearnEnv3D, self).__init__(rlObj, optimizer)
-        subprocess.call(['rosrun', 'baxter_tools', 'tuck_arms.py', '-u'])
+        _ = subprocess.check_output(['rosrun', 'baxter_tools', 'tuck_arms.py', '-u'])
 
         self.imageSub = rospy.Subscriber("cameras/head_camera_2/image",Image,self.imageFromCamera)
         self.objects = {}
@@ -197,18 +197,28 @@ class LearnEnv3D(LearnEnv1D):
 
         self.leftArm = Limb('left')
         self.posSub = rospy.Subscriber("/robot/limb/left/endpoint_state",EndpointState, self.gripperPosFromSub)
-        
-        self.neutralPosition = np.array([0.64,0.20,0.31])
-        self.currentPosition = self.neutralPosition
-        
+
+        if const.TASK==3:
+            self.neutralPosition = np.array([0.50,0.20,-0.05])
+        else:
+            self.neutralPosition = np.array([0.64,0.20,0.10])
+
         self.beginningPosition = self.leftArm.joint_angles()
         self.ee_orientation = baxter_utils.get_ee_orientation(self.leftArm)
         
         self.limit = const.LIMIT #Limit of step before reseting
 
-        self.actions = [np.array(i) for i in product( (0.05,-0.05,0), repeat=3) ]
-        self.actions.pop()
-        print "actions",self.actions 
+        if const.TASK==4:
+            self.actions = [np.array(i) for i in product( (0.05,-0.05,0), repeat=3) ]
+            self.actions.pop()
+        elif const.TASK==3:
+            self.actions = [
+                np.array([0.05,0,0]),
+                np.array([-0.05,0,0]),
+                np.array([0,0.05,0]),
+                np.array([0,-0.05,0]),
+                np.array([0,0,-0.05])
+                ]
 
     def spawnButton(self):
         buttonPoint = Point(*self.buttonPosDefault)
@@ -217,7 +227,7 @@ class LearnEnv3D(LearnEnv1D):
         self.add_object( SuperButton('button1').spawn(buttonPoint))
 
     def delButton(self):
-        subprocess.call(["rosservice","call","gazebo/delete_model","model_name: 'button1'"])
+        _ = subprocess.check_output(["rosservice","call","gazebo/delete_model","model_name: 'button1'"])
         time.sleep(const.ACTION_TIME)
             
     def gripperPosFromSub(self, message):
@@ -230,16 +240,20 @@ class LearnEnv3D(LearnEnv1D):
         for obj in self.objects.keys(): self.objects[obj].delete()
 
     def reset(self):
-        subprocess.call(['rosrun', 'baxter_tools', 'tuck_arms.py', '-u'])
+        _ = subprocess.check_output(['rosrun', 'baxter_tools', 'tuck_arms.py', '-u'])
         time.sleep(const.ACTION_TIME)
 
         self.spawnButton()
 
         joints = None
+        count = 0
         while not joints:
             try:
                 joints = baxter_utils.IK(self.leftArm, self.neutralPosition, self.ee_orientation)
             except rospy.ServiceException:
+                count += 1
+                if count >10:
+                    raise BaxterProblem("Problem in IK : Can't reach neutral position")
                 continue
             
         self.leftArm.move_to_joint_positions(joints)
@@ -277,13 +291,12 @@ class LearnEnv3D(LearnEnv1D):
         # Check if action could be done (Sometimes it fails because the point the robot need to reach is too far)
         if not self.move(self.actions[action]): #smarter way to select action, instead of doing if elif elif etc ...
             print "Hand cannot reach, if you see this many times, you should restart ros, something is wrong with IK" 
-            reward = -5
-            done = False
+            reward = -20
+            done = True
             return reward, done
 
-        print self.objects['button1'].positionFromSub, self.buttonPosDefault[:2]
         button_moved = not np.allclose(self.objects['button1'].positionFromSub, self.buttonPosDefault[:2], rtol=0, atol=2e-2) #Check if button moved during step or not, just to be sure, you don't take z into account, because since the button is spawn above the table, the spawn z IS different from the actual position
-            
+
         #Get reward or not
         if self.objects['button1'].is_pressed():
             reward = 20
@@ -294,7 +307,7 @@ class LearnEnv3D(LearnEnv1D):
             done = True
         else:
 
-            if np.allclose(self.currentPosition, self.currentPositionFromSub,rtol=0, atol=1e-2):
+            if np.allclose(self.currentPosition, self.currentPositionFromSub,rtol=0, atol=1e-2): #do try to go out of the table
                 self.currentPosition = np.array(self.currentPositionFromSub)
                 reward = 0
                 done = False
@@ -302,7 +315,11 @@ class LearnEnv3D(LearnEnv1D):
             else:
                 print "boing, wall" 
                 self.move(-1*self.actions[action]) #smarter way to select action, instead of doing if elif elif etc ...
-                reward = -5
-                done = False
+                if const.TASK==3:
+                    reward = -20
+                    done=True
+                else:
+                    reward = -5
+                    done=False
 
         return reward,done

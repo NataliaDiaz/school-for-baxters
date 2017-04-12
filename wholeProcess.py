@@ -54,7 +54,7 @@ def doExpe(timNet, reset=True):
     rlObj = RlContainer(rl,timNet)
     
     #Creating env
-    if const.TASK==3:
+    if const.TASK>2:
         env = LearnEnv3D(rlObj, optimizer)
     else:
         env = LearnEnv1D(rlObj, optimizer)
@@ -80,7 +80,7 @@ rospy.init_node('Learning',log_level=rospy.FATAL)
 
 print "Whole Process : Model = ",const.MODEL 
 
-if const.TASK ==3:
+if const.TASK >2:
     if const.MODEL == 'true':
         timNet = TrueNet3D() #True position of the head, for t
     else:
@@ -112,7 +112,7 @@ if const.NUM_EXPE>1:
             logMean[i,:] = doExpe(timNet,reset=reset)
         except:
             saveTempLog(logMean)
-            if const.TASK==3:
+            if const.TASK>2:
                 pass
                 #env.del_objects()
             raise

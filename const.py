@@ -22,9 +22,10 @@ RBF = False
 #instead of being a single value, it is values taken from a mixture of gaussian distribution
 
 TASK = 3
-#first task => look at your left, don't look at the right, there is a monster
-#second task => don't look at your left or right, look in front of you
-#third task => 3D controlling hand with button
+#1st task => look at your left, don't look at the right, there is a monster
+#2nd task => don't look at your left or right, look in front of you
+#3rd task => 3D controlling hand with button. Action available are easy (only descending and lateral)
+#4th task => 3D controlling hand with button action available are in all directions
 
 MAX_PAN = 1.2
 MIDDLE_PAN = 0.1
@@ -36,7 +37,7 @@ USE_CUDA = True
 # To GPU or not GPU
 
 DISPLAY = False #display image and representation associated at every timestep
-NO_BRAIN = 25 # baxter does only this action
+NO_BRAIN = False # baxter does only this action
 
 REWARD = False #show rewardbatch at every timestep
 
@@ -51,7 +52,7 @@ PRINT_INFO = 50
 if RBF:
     NUM_INPUT = NUM_RBF
 
-N = 20 #number of hidden neuron
+N = 50 #number of hidden neuron
 
 SIZE_MEMORY = 10000
 
@@ -73,13 +74,20 @@ NUM_EXPE = 20
 #1 : Do only one Rl for testing, the model is saved
 #>1 : Do multiple experiences to get stats and plots, only last model is saved
 
-if TASK==3:
-    NUM_ACTION = 26
+if TASK>2:
     RESET_TIME = 3 #Estimation of the time to reset robot
     ACTION_TIME = 0.1 #Estimation of the time to execute one action
-    LIMIT = 399 #Timeout, the game is over, new game incomming
     NUM_INPUT = 3
-    
+
+    if TASK==4:
+        NUM_ACTION = 26
+        LIMIT = 399 #Timeout, the game is over, new game incomming
+
+    elif TASK==3:
+        NUM_ACTION = 5
+        LIMIT = 199 #Timeout, the game is over, new game incomming
+    else:
+        raise DrunkProgrammer("Only task 3 and 4 exists")
 else:
     RESET_TIME = 1 #Estimation of the time to reset robot
     ACTION_TIME = 0.40 #Estimation of the time to execute one action
