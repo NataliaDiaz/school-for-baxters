@@ -12,7 +12,7 @@ class DrunkProgrammer(Exception):pass
 
 HOME = expanduser("~")+'/'
 
-MODEL ='repr'
+MODEL ='true'
 
 MEMORY = 'prioritized' #choice between 'uniform' and 'prioritized'
 
@@ -21,9 +21,10 @@ RBF = False
 #rbf is just a way to represent the state,
 #instead of being a single value, it is values taken from a mixture of gaussian distribution
 
-TASK = 2 #First or second task
+TASK = 3
 #first task => look at your left, don't look at the right, there is a monster
 #second task => don't look at your left or right, look in front of you
+#third task => 3D controlling hand with button
 
 MAX_PAN = 1.2
 MIDDLE_PAN = 0.1
@@ -35,12 +36,12 @@ USE_CUDA = True
 # To GPU or not GPU
 
 DISPLAY = False #display image and representation associated at every timestep
-NO_BRAIN = False # baxter does only 'turn_left' 
+NO_BRAIN = 25 # baxter does only this action
 
 REWARD = False #show rewardbatch at every timestep
 
 LEARNING_RATE = 0.05
-GAMMA = 0.9
+GAMMA = 0.85
 POWER = 0.5 #For prioritized memory, higher value => higher probability to replay 'surprising' reward. 0 => uniform random
 
 NUM_EP = 75
@@ -49,11 +50,7 @@ PRINT_INFO = 50
 
 if RBF:
     NUM_INPUT = NUM_RBF
-else:
-    NUM_INPUT = 1
 
-NUM_ACTION = 2
-NUM_OBS = 1
 N = 20 #number of hidden neuron
 
 SIZE_MEMORY = 10000
@@ -70,11 +67,24 @@ MAIN_PATH = HOME+'Documents/enstage/'
 RL_PATH = MAIN_PATH+'rl/'
 MODEL_PATH = RL_PATH+'model/'
 LOG_RL = RL_PATH+'Log/'
-TIM_PATH = MAIN_PATH+'Baxter_Learning/Log/'
+TIM_PATH = MAIN_PATH+'learningRepresentation/Log/'
 
 NUM_EXPE = 20
 #1 : Do only one Rl for testing, the model is saved
 #>1 : Do multiple experiences to get stats and plots, only last model is saved
 
-RESET_TIME = 1 #Estimation of the time to reset robot
-ACTION_TIME = 0.40 #Estimation of the time to execute one action
+if TASK==3:
+    NUM_ACTION = 26
+    RESET_TIME = 3 #Estimation of the time to reset robot
+    ACTION_TIME = 0.1 #Estimation of the time to execute one action
+    LIMIT = 399 #Timeout, the game is over, new game incomming
+    NUM_INPUT = 3
+    
+else:
+    RESET_TIME = 1 #Estimation of the time to reset robot
+    ACTION_TIME = 0.40 #Estimation of the time to execute one action
+    LIMIT = 199
+    NUM_ACTION = 2
+    NUM_INPUT = 1
+
+    

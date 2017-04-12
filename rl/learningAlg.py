@@ -82,15 +82,14 @@ class ReplayMemoryPrioritized(ReplayMemory):
         
 class RlContainer(object):
 
-    def __init__(self, rlObj, timNet,exploration):
+    def __init__(self, rlObj, timNet):
         self.rlObj = rlObj
         self.timNet = timNet
         self.mean, self.std = self.getMeanStdImages()
-        self.exploration=exploration
+        self.exploration=const.EXPLO
         self.currentState = None #Need to remember state to save
         self.logState = []
         self.logAction = []
-
         
     def save(self, action, nextState, reward, estimation=None):
         #next state is an image, need the state corresponding
