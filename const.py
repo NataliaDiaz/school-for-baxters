@@ -16,6 +16,7 @@ MODEL ='true'
 
 MEMORY = 'prioritized' #choice between 'uniform' and 'prioritized'
 
+STORE_STATE_MEAN = True
 NUM_RBF = 4
 RBF = False
 #rbf is just a way to represent the state,
@@ -37,53 +38,60 @@ USE_CUDA = True
 # To GPU or not GPU
 
 DISPLAY = False #display image and representation associated at every timestep
-NO_BRAIN = False # baxter does only this action
+NO_BRAIN = False
+#NO_BRAIN = 4
+#False : you want baxter to act normally
+#int (in action range): baxter does only this action
 
-REWARD = False #show rewardbatch at every timestep
+SHOW_REWARD = False #show rewardbatch at every timestep
 
-LEARNING_RATE = 0.05
-GAMMA = 0.85
+LEARNING_RATE = 0.01
+GAMMA = 0.60
 POWER = 0.5 #For prioritized memory, higher value => higher probability to replay 'surprising' reward. 0 => uniform random
 
 NUM_EP = 75
-BATCH_SIZE = 30 
-PRINT_INFO = 50
+BATCH_SIZE = 60
+PRINT_INFO = 20
 
 if RBF:
     NUM_INPUT = NUM_RBF
 
-N = 50 #number of hidden neuron
+N = 20 #number of hidden neuron
 
 SIZE_MEMORY = 10000
 
 EXPLO = 'boltzman' #explo can be 'boltzman' or 'eps'
 
-#For epsilon greed
+#For epsilon-greedy
 EPS_START = 0.9
 EPS_END = 0.10
 EPS_DECAY = 300
 
-MAIN_PATH = HOME+'Documents/enstage/'
+MAIN_PATH = './'
 
 RL_PATH = MAIN_PATH+'rl/'
 MODEL_PATH = RL_PATH+'model/'
 LOG_RL = RL_PATH+'Log/'
-TIM_PATH = MAIN_PATH+'learningRepresentation/Log/'
+TIM_PATH = MAIN_PATH+'baxter_representation_learning_1D/Log/'
 
 NUM_EXPE = 20
 #1 : Do only one Rl for testing, the model is saved
 #>1 : Do multiple experiences to get stats and plots, only last model is saved
 
 if TASK>2:
-    RESET_TIME = 3 #Estimation of the time to reset robot
+    RESET_TIME = 2 #Estimation of the time to reset robot
     ACTION_TIME = 0.1 #Estimation of the time to execute one action
     NUM_INPUT = 3
 
     if TASK==4:
+        raise NotImplemented("Try Task 3 at the moment")
         NUM_ACTION = 26
         LIMIT = 399 #Timeout, the game is over, new game incomming
 
     elif TASK==3:
+        DEFAULT_BUTTON_POS = [0.70,0.34,0.85]
+        RESET_TIME = 2 #Estimation of the time to reset robot
+        ACTION_TIME = 2.5 #Estimation of the time to execute one a
         NUM_ACTION = 5
         LIMIT = 199 #Timeout, the game is over, new game incomming
     else:

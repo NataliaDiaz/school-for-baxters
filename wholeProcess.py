@@ -7,7 +7,7 @@ import const # all constants needed are there, the format to use constanst is : 
 
 from interfaceBax.env import LearnEnv1D, LearnEnv3D
 from rl.learningAlg import DQN, DQN_prioritized, DQN_endToEnd, RlContainer
-from learningRepresentation.timNet import loadModel,LuaModel, TrueNet, DummyTimNet, TrueNet3D
+from baxter_representation_learning_1D.timNet import loadModel,LuaModel, TrueNet, DummyTimNet, TrueNet3D
 from plot import plotMeanScores, plotOneExp, saveTempLog, loadTempLog
 
 from os.path import isfile
@@ -26,19 +26,21 @@ def doExpe(timNet, reset=True):
     if const.MODEL in ['auto','repr','true','superv']:
         if const.MEMORY == 'uniform':
             rl = DQN(const.NUM_INPUT,const.NUM_ACTION,const.N)
-            modelString = "{}Dqn{}{}.state".format(const.MODEL_PATH,const.N, const.NUM_ACTION)
+
+            modelString = "{}Dqn_N{}T{}M_{}.state".format(const.MODEL_PATH, const.N, const.TASK,const.MODEL)
         elif const.MEMORY == 'prioritized':
             rl = DQN_prioritized(const.NUM_INPUT,const.NUM_ACTION,const.N)
-            modelString = "{}Dqn_prioritized{}{}.state".format(const.MODEL_PATH,const.N, const.NUM_ACTION)
+            modelString = "{}Dqn_prioritized_N{}T{}M_{}.state".format(const.MODEL_PATH, const.N, const.TASK,const.MODEL)
         else:
             raise const.DrunkProgrammer("Wrong memory : {} doesn't exist".format(const.MEMORY))
 
     elif const.MODEL == 'end':
         rl = DQN_endToEnd(const.NUM_INPUT,const.NUM_ACTION, const.N)
-        modelString = "{}Dqn_endToEnd{}{}.state".format(const.MODEL_PATH,const.N, const.NUM_ACTION)
+        modelString = "{}Dqn_endToEnd_T{}M_{}.state".format(const.MODEL_PATH, const.TASK,const.MODEL)
     else:
         raise const.DrunkProgrammer("Wrong model : {} doesn't exist".format(const.MODEL))
-        
+
+    print "model : ", modelString
     if isfile(modelString) and const.LOADING:
         print "Model exists : LOADING MODEL"
         rl.load_state_dict(torch.load(modelString))
@@ -72,7 +74,7 @@ def doExpe(timNet, reset=True):
 #======================================
 #======================================
 
-np.random.seed(1337)
+#np.random.seed(1337)
 
 #rospy.init_node('Learning')
 rospy.init_node('Learning',log_level=rospy.FATAL)
@@ -107,7 +109,7 @@ if const.NUM_EXPE>1:
     for i in range(expeDone, const.NUM_EXPE):
         if i==const.NUM_EXPE-1:
             reset=False
-        print "Experience n°{}, begin".format(i+1)
+        print "Experiment n°{}, begin".format(i+1)
         try:
             logMean[i,:] = doExpe(timNet,reset=reset)
         except:
@@ -117,8 +119,7 @@ if const.NUM_EXPE>1:
                 #env.del_objects()
             raise
             
-        
-        print "Experience n°{}, over".format(i+1)
+        print "Experiment n°{}, over".format(i+1)
         print "Scores", logMean[i,:] 
         saveTempLog(logMean)
         print "================================="

@@ -21,6 +21,7 @@ from collections import namedtuple
 import matplotlib.pyplot as plt
 
 import const # const.USE_CUDA for exemple
+import copy
 
 class BaxterNotReady(Exception): pass
 
@@ -211,8 +212,18 @@ class RlContainer(object):
     def saveModel(self):
         self.rlObj.saveModel()
 
+    def tempSave(self):
+        modelWeight = copy.deepcopy(self.rlObj.state_dict())
+        memory = copy.deepcopy(self.rlObj.memory)
+        return modelWeight, memory
+
     def optimize(self, optimizer):
         self.rlObj.optimize(optimizer)
+
+    def loadWeightAndMemory(self, modelWeight,memorySave):
+        print "Reloading model and memory"
+        self.rlObj.load_state_dict(modelWeight)
+        self.rlObj.memory = memorySave
 
     @property
     def stepsDone(self):
@@ -249,11 +260,11 @@ class DQN(nn.Module):
         self.fc3 = nn.Linear(self.N,self.numOutput)
         #self.normIn = nn.BatchNorm1d(numInput)
 
-        self.name='Dqn{}{}.state'.format(self.N, const.MODEL)
+        self.name='Dqn_N{}T{}M_{}.state'.format(self.N, const.TASK,const.MODEL)
 
     def forward(self,x):
         x = self.activation(self.fc1(x))
-        #x = self.activation(self.fc2(x))
+        x = self.activation(self.fc2(x))
         x = self.fc3(x)
         return x
 
@@ -279,7 +290,8 @@ class DQN(nn.Module):
         # So those lines compute Q(s_t,a)
         Q_s_t = self.forward(stateBatch)
         stateActionValue = Q_s_t.gather(1, actionBatch).cpu()
-        if const.REWARD:
+
+        if const.SHOW_REWARD:
             print "rewardBatch",rewardBatch 
         
         nextStateValue = Variable(torch.zeros(const.BATCH_SIZE))
@@ -316,7 +328,7 @@ class DQN(nn.Module):
 class DQN_prioritized(DQN):
     def __init__(self, numInput, numOutput, N, memory='prioritized'):
         super(DQN_prioritized,self).__init__(numInput, numOutput, N,memory='prioritized')
-        self.name='Dqn_prioritized{}{}.state'.format(self.N, const.MODEL)
+        self.name='Dqn_prioritized_N{}T{}M_{}.state'.format(self.N, const.TASK,const.MODEL)
 
     def updateMemoryValue(self, stateValue,expectedValue):
         delta = torch.abs(stateValue.data - expectedValue.data).pow(const.POWER)+self.memory.eps
@@ -330,7 +342,7 @@ class DQN_prioritized(DQN):
 class DQN_endToEnd(DQN_prioritized):
     def __init__(self, numInput, numOutput, N,memory='prioritized'):
         super(DQN_prioritized,self).__init__(numInput, numOutput, N,memory='prioritized')
-        self.name='Dqn_endToEnd.state'
+        self.name='Dqn_endToEnd_T{}M_{}.state'.format(const.TASK,const.MODEL)
         self.fc3 = None
 
         numFilter = 32
