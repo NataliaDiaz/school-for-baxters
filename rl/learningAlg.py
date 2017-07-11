@@ -23,6 +23,10 @@ import matplotlib.pyplot as plt
 import const # const.USE_CUDA for exemple
 import copy
 
+
+import time
+
+
 class BaxterNotReady(Exception): pass
 
 Transition = namedtuple('Transition', ('state', 'action', 'nextState', 'reward'))
@@ -49,7 +53,7 @@ class ReplayMemory(object):
             self.memory.append(None)
             self.priority.append(None)
 
-        self.memory[self.position] = Transition(currentState,action,nextState,reward)
+        self.memory[self.position] = Transition(currentState.cpu(),action,nextState.cpu(),reward)
         self.priority[self.position] = 1.0
 
         self.position = (self.position + 1) % self.capacity
@@ -76,7 +80,7 @@ class ReplayMemoryPrioritized(ReplayMemory):
             self.memory.append(None)
             self.priority.append(None)
 
-        self.memory[self.position] = Transition(currentState,action,nextState,reward)
+        self.memory[self.position] = Transition(currentState.cpu(),action,nextState.cpu(),reward)
         self.priority[self.position] = delta+self.eps
 
         self.position = (self.position + 1) % self.capacity
@@ -109,7 +113,7 @@ class RlContainer(object):
 
 
         if const.DISPLAY:
-            print "state",state[0,0]
+            print "state",state[0]
 
         if self.exploration=='boltzman':
             action,delta =  self.boltzman(state)
@@ -127,6 +131,7 @@ class RlContainer(object):
         self.logAction.append(action[0,0])
         
         return action,delta
+
     def boltzman(self,state):
 
         self.eps_threshold = 0
@@ -135,7 +140,7 @@ class RlContainer(object):
         Qs = F.softmax(res)
 
         act = np.random.choice(Qs.size(1), p=Qs[0,:].data.cpu().numpy())
-        if self.stepsDone%const.PRINT_INFO==0:
+        if self.stepsDone%const.PRINT_INFO==0 and const.MODEL != 'end':
             print "state",state,Qs,res.data
 
         return torch.LongTensor([[act]]), res.data[0,act]
@@ -163,27 +168,34 @@ class RlContainer(object):
 
         if img is None: raise BaxterNotReady("Relaunch Programm, camera might not be ready")
 
-        reformatPipe = transforms.Compose([
-            transforms.Scale(200),
-            transforms.CenterCrop((200,200)),
-            transforms.ToTensor()])
-
         img = Image.fromarray(img)
-        img = reformatPipe(img)
 
-        x = img.cpu().numpy()
-        x = np.swapaxes(x,0,2)
-        x = np.swapaxes(x,0,1)
-
-        if const.DISPLAY:
-            plt.imshow(x, interpolation='nearest')
-            plt.show()
-        
-        img = (img - self.mean) / self.std
-
+        if const.TASK>2 : #3D Task is using resnet, which is a different format
+            reformatPipe = transforms.Compose([
+                transforms.Scale((200,200)),
+                transforms.ToTensor(),
+                transforms.Normalize(const.MEAN_MODEL,
+                                     const.STD_MODEL)
+            ])
+            img = reformatPipe(img)
+        else:
+            reformatPipe = transforms.Compose([
+                transforms.Scale(200),
+                transforms.CenterCrop((200,200)),
+                transforms.ToTensor()])
+            img = reformatPipe(img)
+            img = (img - self.mean) / self.std
+            
         if const.USE_CUDA:
             img = img.cuda()
-        
+        if const.DISPLAY:
+            x = img.cpu().numpy()
+            x = np.swapaxes(x,0,2)
+            x = np.swapaxes(x,0,1)
+
+            plt.imshow(x, interpolation='nearest')
+            plt.show()
+
         return img.unsqueeze(0)
 
     def getMeanStdImages(self):
@@ -221,7 +233,6 @@ class RlContainer(object):
         self.rlObj.optimize(optimizer)
 
     def loadWeightAndMemory(self, modelWeight,memorySave):
-        print "Reloading model and memory"
         self.rlObj.load_state_dict(modelWeight)
         self.rlObj.memory = memorySave
 

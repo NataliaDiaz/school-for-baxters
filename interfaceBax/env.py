@@ -1,9 +1,16 @@
 #!/usr/bin/python
 #coding: utf-8
+from copy import deepcopy
+import matplotlib.pyplot as plt
+
+import arm_scenario_simulator as arm_sim
+
 import torch
 import numpy as np
 
 import time
+from os.path import isfile
+
 import rospy
 from baxter_interface import Head, Limb, Gripper, CameraController, RobotEnable
 
@@ -65,7 +72,8 @@ class LearnEnv1D(object):
 
         if const.RBF:
             self.setRbfParams()
-            
+
+        self.tempExpeFileName = "tempExpeSave.t7"
 
     def setRbfParams():
         time.sleep(1)
@@ -106,7 +114,7 @@ class LearnEnv1D(object):
             self.head.set_pan(currentPan-0.1)
         else:
             raise BaxterProblem("I can't do that.")
-        time.sleep(const.ACTION_TIME)
+        time.sleep(const.ACTION_TIME) #Waiting for the action to be done
         # print "currentPan, After :",self.head.pan()
         if np.abs(self.head.pan()-currentPan) < 0.08 :
             print "Small Lag, waiting for baxter" 
@@ -144,20 +152,55 @@ class LearnEnv1D(object):
                 
         return reward, done
 
+    def demo(self):
+        self.reset()
+        for t in count():
+            action, estimation = self.rl.getAction(self.currentImage)
+            reward, done = self.step(action[0,0])
+            if done: 
+                break
+
+    def saveTempExpe(self):
+
+        modelWeightSave, memorySave = self.rl.tempSave() #In case something fail, saving network state and memory
+        tempExpe = [self.logScores, modelWeightSave, memorySave, self.countEp]
+        torch.save(tempExpe,self.tempExpeFileName)
+        print "Expe Saved, no need to redo everything"
+
+    def loadTempExpe(self):
+
+        print "Reloading current experience's score"
+        logScores, netWeight, memory, count = torch.load(self.tempExpeFileName)
+
+        # print "memory",memory.memory
+        # raw_input()
+
+        self.logScores = logScores
+        self.rl.loadWeightAndMemory(netWeight,memory)
+        self.countEp = count
+        #subprocess.call(["rm",self.tempExpeFileName])
+
     def run(self):
 
-        logScores = []
+        self.logScores = []
         meanScores = []
-        countEp = 0
-
-        while ~rospy.is_shutdown() and countEp<const.NUM_EP:
+        self.countEp = 0
+        loading = True
+        
+        while ~rospy.is_shutdown() and self.countEp<const.NUM_EP:
+            if isfile(self.tempExpeFileName) and loading:
+                self.loadTempExpe()
 
             modelWeightSave, memorySave = self.rl.tempSave() #In case something fail, saving network state and memory
             self.reset()
             totalReward = 0
 
             for t in count():
-                action, estimation = self.rl.getAction(self.currentImage)
+                # img = deepcopy(self.currentImage)
+                # plt.imshow(img)
+                # plt.savefig(str(t)+'.png')
+
+                action, estimation = self.rl.getAction(self.currentImage) # Normalizing images etc... is in rl package
                 reward, done = self.step(action[0,0])
                 totalReward += reward
  
@@ -171,18 +214,22 @@ class LearnEnv1D(object):
                         print "Exit code 2 : Re-doing this trial" 
                         #reloading the network and memory, saved before this experiments
                         self.rl.loadWeightAndMemory(modelWeightSave, memorySave)
-                    elif done==1 : #exit code is 1 everything is fine, the trial is done
-                        countEp += 1
-                        logScores.append(totalReward*3-t)
-                        print "======= Trial {} Over, score : {} =========".format(countEp, logScores[-1])
+                    elif done==1 or t>self.limit :
+                        #exit code is 1 everything is fine, the trial is done
+                        #OR t is too high, taking too much time to find reward
+                        self.countEp += 1
+                        self.logScores.append(totalReward*3-t)
+                        print "======= Trial {} Over, score : {} =========".format(self.countEp, self.logScores[-1])
 
+                        self.saveTempExpe()
+                        loading = False
+                        
                         if type(self.rl.logState[-1]) is float:
                             print "logState 5 last state",self.rl.logState[-5:]
                         print "logAction 5 last action",self.rl.logAction[-5:]
                         self.rl.logState = []
                     else:
                         raise const.DrunkProgrammer("Exit code 'done' can be 0,1,2 not {}".format(done))
-
                     break
 
             if done==2:
@@ -190,16 +237,20 @@ class LearnEnv1D(object):
                 continue
             else:
                 self.rl.saveModel()
-                if countEp>=const.PRINT_INFO:
-                    logTemp = logScores[countEp-const.PRINT_INFO:countEp]
-                if countEp%const.PRINT_INFO==0:
-                    print "countEp",countEp
+                if self.countEp>=const.PRINT_INFO:
+                    logTemp = self.logScores[self.countEp-const.PRINT_INFO:self.countEp]
+                if self.countEp%const.PRINT_INFO==0:
+                    print "self.countEp",self.countEp
                     print "logScores",logTemp
                     #print "loss",self.rl.currentLoss[0]
 
                     #print "Mean Scores", meanScores
 
-        return logScores
+        #Clean the expe file so it is not loaded by the next one
+        if isfile(self.tempExpeFileName):
+            subprocess.call(["rm",self.tempExpeFileName])
+        
+        return self.logScores
 
 
 class LearnEnv3D(LearnEnv1D):
@@ -213,13 +264,16 @@ class LearnEnv3D(LearnEnv1D):
         self.leftArm = Limb('left')
         self.posSub = rospy.Subscriber("/robot/limb/left/endpoint_state",EndpointState, self.gripperPosFromSub)
 
-        if const.TASK==3:
-            self.neutralPosition = np.array([0.50,0.20,0])
-        else:
-            self.neutralPosition = np.array([0.64,0.20,0.10])
+        self.neutral_position = const.NEUTRAL_POSITION
 
         self.beginningPosition = self.leftArm.joint_angles()
-        self.ee_orientation = baxter_utils.get_ee_orientation(self.leftArm)
+
+        self.add_object(arm_sim.Button('button1'))
+        try:
+            self.button_orientation = self.objects['button1'].get_state().pose.orientation
+        except Exception:
+            raise BaxterProblem("Button not found, launch 'rosrun arm_scenario_simulator spawn_objects_example' or expample2")
+
         
         self.limit = const.LIMIT #Limit of step before reseting
 
@@ -234,18 +288,32 @@ class LearnEnv3D(LearnEnv1D):
                 np.array([0,-0.05,0]),
                 np.array([0,0,-0.10]),
                 np.array([0,0,0.10])
+                #The last action is not used at the moment
                 ]
 
     def positionIsValid(self):
-        validPosition = 0.42 < self.currentPositionFromSub[0] < 0.80
-        validPosition = validPosition and -0.2 < self.currentPositionFromSub[1] < 0.76
+        validPosition = const.LIM_INF_X < self.currentPositionFromSub[0] < const.LIM_SUP_X
+        validPosition = validPosition and const.LIM_INF_Y < self.currentPositionFromSub[1] < const.LIM_SUP_Y
         return validPosition
 
     def spawnButton(self):
+
         buttonPoint = Point(*self.buttonPosDefault)
         #if button already exists, it's from an other session, need to delete.
-        self.delButton()
-        self.add_object( SuperButton('button1').spawn(buttonPoint))
+        self.objects['button1'].set_state(position = buttonPoint)
+
+        # # colorButton1 = [30,20,220]
+        # # colorButton2 = [100,80,250]
+        # colorButton1 = [70,220,20]
+        # colorButton2 = [0,150,2]
+        # self.objects['button1'].set_base_color(
+        #     rgba = colorButton1)
+        # self.objects['button1'].set_button_color(
+        #     rgba = colorButton2)        
+        
+        # self.button_orientation = self.objects['button1'].get_state().pose.orientation
+        # rospy.sleep(1)
+
 
     def tuckArms(self):
 
@@ -257,9 +325,11 @@ class LearnEnv3D(LearnEnv1D):
                 _ = subprocess.check_output(['rosrun', 'baxter_tools', 'tuck_arms.py', '-u'])
                 done = True
             except subprocess.CalledProcessError:
-                time.sleep(3)
+                time.sleep(3) #Sometimes, the process is not initialized yet, need to wait a little seems to do the trick
                 fail += 1
                 print "Warning tucking arm failed, catching error and continue, if you see this too often, check ros"
+
+        self.ee_orientation = baxter_utils.get_ee_orientation(self.leftArm)
                 
             
     def delButton(self):
@@ -278,13 +348,23 @@ class LearnEnv3D(LearnEnv1D):
     def reset(self):
 
         self.tuckArms()
+        time.sleep(0.5)
+        
         self.spawnButton()
+
+        _ = subprocess.check_output(["rosrun","arm_scenario_experiments", "button_init_pose"])
 
         joints = None
         count = 0
         while not joints:
             try:
-                joints = baxter_utils.IK(self.leftArm, self.neutralPosition, self.ee_orientation)
+                begin_position = np.zeros(3)
+                begin_position[0] = np.random.uniform(*self.neutral_position[0])
+                begin_position[1] = np.random.uniform(*self.neutral_position[1])
+                begin_position[2] = self.neutral_position[2]
+                                
+
+                joints = baxter_utils.IK(self.leftArm,begin_position, self.ee_orientation)
             except rospy.ServiceException:
                 count += 1
                 if count >10:
@@ -292,7 +372,8 @@ class LearnEnv3D(LearnEnv1D):
                 continue
             
         self.leftArm.move_to_joint_positions(joints)
-        time.sleep(const.RESET_TIME)
+
+        time.sleep(const.RESET_TIME) #Waiting for the arms to be in the good position
         self.rl.timNet.state = self.currentPositionFromSub
         return joints
 
@@ -331,7 +412,7 @@ class LearnEnv3D(LearnEnv1D):
     def step(self,actionId):
         """
         Input : actionId (int)
-        Return reward, done
+        Output : reward, done
 
         done is a code :
         - 0 (or False) : Not Done Yet
@@ -357,20 +438,22 @@ class LearnEnv3D(LearnEnv1D):
             done = 2
             return reward, done
 
-        try:
-            button_moved = not np.allclose(self.objects['button1'].positionFromSub, self.buttonPosDefault[:2], rtol=0, atol=2e-2) #Check if button moved during step or not. You don't take z into account, because since the button is spawn above the table, the spawn z IS different from the actual position
-        except TypeError,e:
-            #The problem is that the button subscriber is still not working
-            #So we use the default position of button
-            button_moved = False
+        currentButtonPos = self.objects['button1'].get_state().pose.position
+        currentButtonPos = np.array([currentButtonPos.x, currentButtonPos.y]) #You don't take z into account, because since the button is spawn above the table, the spawn z IS different from the actual position
+        const.DEFAULT_BUTTON_POS[:2]-currentButtonPos
 
+        #Check if button moved during step or not. 
+        if np.linalg.norm(const.DEFAULT_BUTTON_POS[:2]-currentButtonPos)>0.001:
+            button_moved = True
+        else:
+            button_moved = False
+   
         #print "actual pos",self.currentPositionFromSub
         if self.objects['button1'].is_pressed():
             reward = 20
             done = 1
-        elif button_moved:
-            reward = 0
-            done = 2
+            return reward,done
+
         elif not self.positionIsValid():
             print "Out of Bound : GAME OVER" 
             reward = -20
@@ -380,9 +463,9 @@ class LearnEnv3D(LearnEnv1D):
                 reward = 0
                 done = 0
             else:
-                print "Boing, wall, should not be here"
+                #print "Boing, wall, should not be here"
+                lastPosition[2] = const.GOOD_Z_POS
                 self.move(lastPosition, relative=False)
-                time.sleep(0.5)
                 #Waiting because sometimes the arm is still stuck on the table
 
                 if const.TASK==3:
@@ -391,5 +474,11 @@ class LearnEnv3D(LearnEnv1D):
                 else:
                     reward = -5
                     done=0
+                    
+        #reseting button pos if baxter moved it a little
+        if button_moved:
+            #print "button_moved" 
+            self.objects['button1'].set_state(position = Point(*const.DEFAULT_BUTTON_POS), orientation = self.button_orientation) 
+
 
         return reward,done

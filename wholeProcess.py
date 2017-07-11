@@ -1,6 +1,7 @@
-#!/usr/bin/python
+        #!/usr/bin/python
 #coding: utf-8
 from __future__ import division
+import torch
 
 import const # all constants needed are there, the format to use constanst is : const.CONSTANT_NAME
 #EX : const.USE_CUDA
@@ -26,7 +27,6 @@ def doExpe(timNet, reset=True):
     if const.MODEL in ['auto','repr','true','superv']:
         if const.MEMORY == 'uniform':
             rl = DQN(const.NUM_INPUT,const.NUM_ACTION,const.N)
-
             modelString = "{}Dqn_N{}T{}M_{}.state".format(const.MODEL_PATH, const.N, const.TASK,const.MODEL)
         elif const.MEMORY == 'prioritized':
             rl = DQN_prioritized(const.NUM_INPUT,const.NUM_ACTION,const.N)
@@ -78,16 +78,20 @@ def doExpe(timNet, reset=True):
 
 #rospy.init_node('Learning')
 rospy.init_node('Learning',log_level=rospy.FATAL)
-# log_level=FATAL only means that not all warning are printede
+# log_level=FATAL only means that not all warning are printed
 
 print "Whole Process : Model = ",const.MODEL 
 
-if const.TASK >2:
+if const.TASK >2: #3D task
     if const.MODEL == 'true':
-        timNet = TrueNet3D() #True position of the head, for t
+        timNet = TrueNet3D() #True position of the head, for
+    elif const.MODEL == 'end':
+        timNet = DummyTimNet() # Does nothing
+    elif const.MODEL == 'repr':
+        timNet = loadModel('model3d.t7')
     else:
         raise const.DrunkProgrammer("Not available at the moment")
-else:
+else: #1D task
     if const.MODEL == 'auto':
         timNet = loadModel("auto1d.t7")
     elif const.MODEL == 'repr':
@@ -100,7 +104,6 @@ else:
         timNet = DummyTimNet() # Does nothing
     else:
         raise const.DrunkProgrammer("Wrong model : {} doesn't exist".format(const.MODEL))
-
     
 if const.NUM_EXPE>1:
     reset=True
