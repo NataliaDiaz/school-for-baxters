@@ -20,6 +20,7 @@ git clone https://github.com/Mathieu-Seurin/3D_Baxter_representation_learning.gi
 
 
 Running the experiment episodes:
+
 1. 
 ```
 ./process.sh
@@ -31,7 +32,9 @@ Then gazebo should open (you have to wait a little bit). Wait until you see
 # [ INFO] [1508766121.395810571, 114.802000000]: Gravity compensation was turned off
 ```
 2. Run in separate terminal window
+```
 rosrun arm_scenario_simulator spawn_objects_example
+```
 
 3. Then, in a new terminal (don't try to interrupt the other one)
 ```
