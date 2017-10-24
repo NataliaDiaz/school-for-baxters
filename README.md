@@ -4,7 +4,8 @@ Requirements:
 1. Numpy and Matplotlib
 
 2. Baxter arm simulator (ROS) :
-  * https://bitbucket.org/u2isir/arm_scenario_simulator
+  * New simulator version: https://github.com/araffin/arm_scenario_simulator
+    (Old version: https://bitbucket.org/u2isir/arm_scenario_simulator)
 
 3. Pytorch :
   * http://pytorch.org/
@@ -40,6 +41,14 @@ rosrun arm_scenario_simulator spawn_objects_example
 ```
 python wholeProcess.py
 ```
+
+
+
+LINKS:
+
+This repository uses data recorded with
+https://github.com/NataliaDiaz/arm_scenario_experiments
+
 
 WARNING : 
 --------
